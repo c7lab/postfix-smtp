@@ -1,0 +1,40 @@
+# Kickstart container config file - see https://gitub.com/c7lab/kickstart
+# Run ./kickstart.sh to start a development-container for this project
+version: 1
+from: "continue/kickstart-flavor-gaia:testing"
+
+
+command:
+  init:
+    - "sudo apt-get update -y"
+    - "echo 'postfix postfix/main_mailer_type string Internet site' > preseed.txt"
+    - "echo 'postfix postfix/mailname string localhost' >> preseed.txt"
+
+    - "sudo debconf-set-selections preseed.txt"
+    - "sudo DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -q -y postfix syslog-ng"
+
+    - "sudo postconf myhostname=localhost"
+    - "sudo postconf myorigin=localhost"
+    - "sudo postconf mynetworks='127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 172.17.0.0/25' "
+
+    - "sudo postconf smtputf8_enable=no"
+    - "sudo postconf smtputf8_autodetect_classes=bounce"
+
+
+    - "cd /etc/ssl/certs"
+    - "openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes -subj '/CN=localhost'"
+    - "sudo postconf smtpd_tls_cert_file=/etc/ssl/certs/cert.pem"
+    - "sudo postconf smtpd_tls_key_file=/etc/ssl/certs/key.pem"
+    - "sudo mv cert.pem /etc/ssl/certs/cert.pem"
+    - "sudo mv key.pem /etc/ssl/certs/key.pem"
+
+    #- "sudo echo 'pass' > /etc/ssl/certs/key.pem"
+
+    - "sudo apt-get install net-tools"
+
+    - "echo 'Starting syslog-ng...'"
+    - "sudo service syslog-ng start"
+
+    - "sudo service postfix reload"
+    - "echo 'Starting Postifx...'"
+    - "sudo service postfix start"
